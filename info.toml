@@ -1,3 +1,5 @@
 [meta]
-name = "Control Yourself"
+name = "Session Stats"
 author = "rammbinoTM"
+category = "Utilities"
+version = "0.0.2"
