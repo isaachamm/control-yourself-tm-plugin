@@ -13,35 +13,49 @@ namespace Timer {
     int timePlayed = 0;
     string currTime = "";
     string prevTime = "";
+    bool timerYellowNotificationShown = false;
+    bool timerRedNotificationShown = false;
+
     void Update() {
 
         uint64 delta;
         delta = lastRenderTime == 0 ? 0 : Time::Now - lastRenderTime;
         lastRenderTime = Time::Now;
-        int sign = Timer_Start_Time_MS < 0 ? -1 : 1;
         timePlayed += delta;
         Timer_Start_Time_MS -= delta;
-        int signAfter = Timer_Start_Time_MS < 0 ? -1 : 1;
-
-        if (sign != signAfter) {
-            UI::ShowNotification("Timer Done", "\n\t\tTake a break!\n\n", vec4(0.7, 0, 0, 1.f), 5000);
-        }
-        // print(Time::FormatString("%H:%M:%S",Timer_Start_Time_MS));
         currTime = Time::Format(Timer_Start_Time_MS, false, true, true);
-        // print(Time::Format(Timer_Start_Time_MS, false, true, true));
         
+
         if (currTime != prevTime) {
             prevTime = currTime;
+        }
+
+        if (Timer_Start_Time_MS < (Max_Time / 10) && Timer_Start_Time_MS >= 0 && !timerYellowNotificationShown) {
+            string[] currTimeArray = currTime.Split(":");
+            string currTimeHours = (Text::ParseInt(currTimeArray[0]) <= 0) ? "" : currTimeArray[0] + " Hours";
+            string currTimeMinutes = ((Text::ParseInt(currTimeArray[1]) <= 0) ? "" : currTimeArray[1] + " Minutes");
+            string currTimeSeconds = ((Text::ParseInt(currTimeArray[2]) <= 0) ? "" : currTimeArray[2] + " Seconds");
+
+            string currTimeMessage = currTimeHours + currTimeMinutes + ((Text::ParseInt(currTimeArray[2]) <= 0) ? "" : currTimeArray[2] + " Seconds") + " Left!";
+            UI::ShowNotification("Timer Almost Done", currTime + " Left.\nFinish Strong!", GlobalProps::Yellow_Warning_Color, 5000);
+            timerYellowNotificationShown = true;
+        } else if (Timer_Start_Time_MS < 0 && !timerRedNotificationShown) {
+            UI::ShowNotification("Timer Done", "Time for a break!", GlobalProps::Red_Warning_Color, 5000);
+            timerRedNotificationShown = true;
         }
     }
 
     void TimerSettings() {
         if (UI::Button("Reset Timer to 1 hour" + "##ResetTimer")) {
+            timerYellowNotificationShown = false;
+            timerRedNotificationShown = false;
             Timer_Start_Time_MS = 3601000;
         }
 
         if (UI::Button("Reset Timer to 1 second" + "##ResetTimerToTen")) {
-            Timer_Start_Time_MS = 1000;
+            timerYellowNotificationShown = false;
+            timerRedNotificationShown = false;
+            Timer_Start_Time_MS = 5000;
         }
 
     }

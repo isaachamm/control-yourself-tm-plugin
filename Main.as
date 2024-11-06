@@ -1,21 +1,11 @@
 #if TMNEXT
 
-
-
-
 void Main() {
-    print("Hello TM!");
 }
 
 void RenderEarly() {
     Respawn::Update();
     Timer::Update();
-    
-
-}
-
-void RenderMenu() {
-    
 }
 
 #else

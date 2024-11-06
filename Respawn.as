@@ -10,12 +10,6 @@ int Total_Resets = 0;
 [Setting hidden name="Number Finishes" category="Settings" description="This is the total number of finishes that occur."]
 int Total_Finishes = 0;
 
-
-
-const vec4 cDefaultText = vec4(0.14f, 0.74f, 0.3f, 1.f);
-vec4 S_GreenTimerColor = cDefaultText;
-vec4 NotificationColor = vec4(0.2, 0.2, 0.2, 1);
-
 namespace Respawn {
 
     string prevMapId = "";
@@ -24,7 +18,8 @@ namespace Respawn {
     int currMapFinishes = 0;
     bool resetHandled = true;
     bool finishHandled = false;
-    bool messageShown = false;
+    bool respawnYellowNotificationShown = false;
+    bool respawnRedNotificationShown = false;
 
     void Update() {
 
@@ -79,9 +74,14 @@ namespace Respawn {
             prevNumRespawns = currNumRespawns;
         }
 
-        if (Total_Respawns + Total_Resets >= Max_Respawns && !messageShown) {
-            UI::ShowNotification("Respawn Count Reached", "\n\t\tTake a break!\n\n", vec4(0.7, 0, 0, 1.f), 5000);
-            messageShown = true;
+        if (Total_Respawns + Total_Resets > (Max_Respawns * 0.9) && !respawnYellowNotificationShown) {
+            UI::ShowNotification("Respawn Count Nearly Reached", "Finish Strong!", GlobalProps::Yellow_Warning_Color, 5000);
+            respawnYellowNotificationShown = true;
+        }
+
+        if (Total_Respawns + Total_Resets > Max_Respawns && !respawnRedNotificationShown) {
+            UI::ShowNotification("Respawn Count Passed", "Take a break! Or last run :(", GlobalProps::Red_Warning_Color, 5000);
+            respawnRedNotificationShown = true;
         }
     }
 
@@ -99,8 +99,46 @@ namespace Respawn {
 
         UI::Text("Session Start Time: " + Timer::sessionStartTime + " / " + "Current Time: " + currTime);
         UI::Text("Time Played This Session: " + Time::Format(Timer::timePlayed, false, true, true));
-        UI::Text("Time Left: " + gameTimeRemaining + " / Max Time: " + Time::Format(Max_Time, false, true,  true));
-        UI::Text("Current Respawns: " + (Total_Resets + Total_Respawns) + " / Max Respawns: " + Max_Respawns);
+        
+        UI::Text("Time Left: ");
+        UI::SameLine();
+        // Changes the text color of time based on time remaining.
+        if (Timer_Start_Time_MS < (Max_Time / 10) && Timer_Start_Time_MS >= 0) {
+            UI::PushStyleColor(UI::Col::Text, GlobalProps::Yellow_Warning_Color);
+            UI::Text(gameTimeRemaining);
+            UI::PopStyleColor();
+        } else if (Timer_Start_Time_MS < 0) {
+            UI::PushStyleColor(UI::Col::Text, GlobalProps::Red_Warning_Color);
+            UI::Text(gameTimeRemaining);
+            UI::PopStyleColor();
+        } else {
+            UI::PushStyleColor(UI::Col::Text, GlobalProps::Green_Notification_Color);
+            UI::Text(gameTimeRemaining);
+            UI::PopStyleColor();
+        }
+        UI::SameLine();
+        
+        UI::Text(" / Max Time: " + Time::Format(Max_Time, false, true,  true));
+        
+        UI::Text("Respawns this session: ");
+        UI::SameLine();
+        // Changes the text color of Respawns based on Respawns remaining.
+        if ((Total_Resets + Total_Respawns) >= (Max_Respawns * 0.9) && (Total_Resets + Total_Respawns) <= Max_Respawns) {
+            UI::PushStyleColor(UI::Col::Text, GlobalProps::Yellow_Warning_Color);
+            UI::Text(tostring(Total_Resets + Total_Respawns));
+            UI::PopStyleColor();
+        } else if ((Total_Resets + Total_Respawns) > Max_Respawns) {
+            UI::PushStyleColor(UI::Col::Text, GlobalProps::Red_Warning_Color);
+            UI::Text(tostring(Total_Resets + Total_Respawns));
+            UI::PopStyleColor();
+        } else {
+            UI::PushStyleColor(UI::Col::Text, GlobalProps::Green_Notification_Color);
+            UI::Text(tostring(Total_Resets + Total_Respawns));
+            UI::PopStyleColor();
+        }
+        UI::SameLine();
+        
+        UI::Text(" / Max Respawns: " + Max_Respawns);
         UI::EndGroup();
         UI::BeginGroup();
 
@@ -112,7 +150,7 @@ namespace Respawn {
 		UI::TableNextColumn();
 		UI::Text("Total");
         UI::TableNextColumn();
-		UI::Text("Current");
+		UI::Text("Current Map");
 
         UI::TableSetBgColor(UI::TableBgTarget::RowBg0, vec4(0,0,0,1));
 
@@ -148,12 +186,48 @@ namespace Respawn {
         UI::TableNextColumn();
         UI::Text(tostring(currMapFinishes));
 
+        UI::TableNextRow();
+		UI::TableNextColumn();
+		UI::Text("Respawns per Reset: ");
+		UI::TableNextColumn();
+		UI::Text((Total_Resets <= 0) ? "0" : tostring(Math::Round((Total_Respawns / double(Total_Resets)), 2)));
+        UI::TableNextColumn();
+        UI::Text((currMapResets <= 0) ? "0" : tostring(Math::Round((prevNumRespawns / double(currMapResets)), 2)));
+
+        UI::TableNextRow();
+		UI::TableNextColumn();
+		UI::Text("Respawns per Finish: ");
+		UI::TableNextColumn();
+		UI::Text((Total_Finishes <= 0) ? "0" : tostring(Math::Round((Total_Respawns / double(Total_Finishes)), 2)));
+        UI::TableNextColumn();
+        UI::Text((currMapFinishes <= 0) ? "0" : tostring(Math::Round((prevNumRespawns / double(currMapFinishes)), 2)));
+
+        UI::TableNextRow();
+		UI::TableNextColumn();
+		UI::Text("Resets per Finish: ");
+		UI::TableNextColumn();
+		UI::Text((Total_Finishes <= 0) ? "0" : tostring(Math::Round((Total_Resets / double(Total_Finishes)), 2)));
+        UI::TableNextColumn();
+        UI::Text((currMapFinishes <= 0) ? "0" : tostring(Math::Round((currMapResets / double(currMapFinishes)), 2)));
+
         UI::EndTable();
         UI::EndGroup();
         UI::End();
     }
 
     void RespawnSettings() {
+
+        UI::Text("Reset all to 0");
+        UI::SameLine();
+        if (UI::Button("Reset all to 0" + "##ResetAll")) {
+            Total_Respawns = 0;
+            prevNumRespawns = 0;
+            Total_Resets = 0;
+            currMapResets = 0;
+            Total_Finishes = 0;
+            currMapFinishes = 0;
+        }
+        
         if (UI::Button("Reset Respawns to 0" + "##ResetRespawns")) {
             Total_Respawns = 0;
             prevNumRespawns = 0;
@@ -181,8 +255,12 @@ namespace Respawn {
             Max_Respawns = 1;
         }
 
-        if (Total_Resets + Total_Respawns < Max_Respawns) {
-            messageShown = false;
+        if ((Total_Resets + Total_Respawns) < Max_Respawns) {
+            respawnRedNotificationShown = false;
+        }
+
+        if ((Total_Resets + Total_Respawns) < (Max_Respawns * 0.9)) {
+            respawnYellowNotificationShown = false;
         }
 
     }
