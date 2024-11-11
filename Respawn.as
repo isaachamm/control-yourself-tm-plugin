@@ -13,13 +13,23 @@ int Total_Finishes = 0;
 namespace Respawn {
 
     string prevMapId = "";
+
+    // Note: prevNumRespawns has to be separate from currMapRespawns because the GUIPlayer.NbRespawnsRequested resets after a finish or a reset.
     int prevNumRespawns = 0;
+    int currMapRespawns = 0;
     int currMapResets = 0;
     int currMapFinishes = 0;
     bool resetHandled = true;
     bool finishHandled = false;
     bool respawnYellowNotificationShown = false;
     bool respawnRedNotificationShown = false;
+
+    string timeBetweenTotalRespawns = "0";
+    string timeBetweenCurrentRespawns = "0";
+    string timeBetweenTotalFinishes = "0";
+    string timeBetweenCurrentFinishes = "0";
+    string timeBetweenTotalResets = "0";
+    string timeBetweenCurrentResets = "0";
 
     void Update() {
 
@@ -28,13 +38,20 @@ namespace Respawn {
         auto map = app.RootMap;
         if (map is null) {
             prevNumRespawns = 0;
+            currMapRespawns = 0;
             currMapResets = 0;
             currMapFinishes = 0;
+            Timer::currMapTimePlayed = 0;
+            SetTimeBetweenCurrentRespawns();
+            SetTimeBetweenCurrentResets();
+            SetTimeBetweenCurrentFinishes();
             return;
         }
         if (prevMapId != map.IdName) {
             prevMapId = map.IdName;
+            currMapRespawns = 0;
             prevNumRespawns = 0;
+            SetTimeBetweenCurrentRespawns();
         }
         auto playground = app.CurrentPlayground;
         if (playground is null || playground.GameTerminals.Length <= 0) return;
@@ -48,6 +65,9 @@ namespace Respawn {
             finishHandled = true;
             currMapFinishes += 1;
             Total_Finishes += 1;
+            SetTimeBetweenTotalFinishes();
+            SetTimeBetweenCurrentFinishes();
+
         }
         if (finishHandled && ui_sequence != CGamePlaygroundUIConfig::EUISequence::Finish)
             finishHandled = false;
@@ -62,16 +82,21 @@ namespace Respawn {
         if (!resetHandled && post == CSmScriptPlayer::EPost::Char) {
             resetHandled = true;
             currMapResets += 1;
+            prevNumRespawns = 0;
             Total_Resets += 1;
+            SetTimeBetweenCurrentResets();
+            SetTimeBetweenTotalResets();
+
         }
 
         // Respawns section
 	    int currNumRespawns = gui_player.Score.NbRespawnsRequested;
-        if (currNumRespawns > prevNumRespawns) {
-            if (currNumRespawns > prevNumRespawns) {
-                Total_Respawns = Total_Respawns + 1;
-            }
+        if (currNumRespawns > prevNumRespawns && currNumRespawns > 0) {
             prevNumRespawns = currNumRespawns;
+            currMapRespawns = currNumRespawns;
+            SetTimeBetweenCurrentRespawns();
+            Total_Respawns = Total_Respawns + 1;
+            SetTimeBetweenTotalRespawns();
         }
 
         if (Total_Respawns + Total_Resets > (Max_Respawns * 0.9) && !respawnYellowNotificationShown) {
@@ -98,7 +123,8 @@ namespace Respawn {
         string currTime = (currTimeInfo.Hour <= 9 ? "0" + tostring(currTimeInfo.Hour) : tostring(currTimeInfo.Hour)) + ":" + (currTimeInfo.Minute <= 9 ? "0" + tostring(currTimeInfo.Minute) : tostring(currTimeInfo.Minute)) + ":" + (currTimeInfo.Second <= 9 ? "0" + tostring(currTimeInfo.Second) : tostring(currTimeInfo.Second));
 
         UI::Text("Session Start Time: " + Timer::sessionStartTime + " / " + "Current Time: " + currTime);
-        UI::Text("Time Played This Session: " + Time::Format(Timer::timePlayed, false, true, true));
+        UI::Text("Time Played This Session: " + Time::Format(Timer::totalTimePlayed, false, true, true));
+        UI::Text("Time Played Current Map: " + Time::Format(Timer::currMapTimePlayed, false, true, true));
         
         UI::Text("Time Left: ");
         UI::SameLine();
@@ -160,7 +186,7 @@ namespace Respawn {
 		UI::TableNextColumn();
 		UI::Text(tostring(Total_Resets + Total_Respawns));
         UI::TableNextColumn();
-		UI::Text(tostring(currMapResets + prevNumRespawns));
+		UI::Text(tostring(currMapResets + currMapRespawns));
 
         UI::TableNextRow();
 		UI::TableNextColumn();
@@ -168,7 +194,7 @@ namespace Respawn {
 		UI::TableNextColumn();
 		UI::Text(tostring(Total_Respawns));
         UI::TableNextColumn();
-        UI::Text(tostring(prevNumRespawns));
+        UI::Text(tostring(currMapRespawns));
 
         UI::TableNextRow();
 		UI::TableNextColumn();
@@ -188,27 +214,59 @@ namespace Respawn {
 
         UI::TableNextRow();
 		UI::TableNextColumn();
-		UI::Text("Respawns per Reset: ");
+		UI::Text("Avg. Respawns / Reset: ");
 		UI::TableNextColumn();
 		UI::Text((Total_Resets <= 0) ? "0" : tostring(Math::Round((Total_Respawns / double(Total_Resets)), 2)));
         UI::TableNextColumn();
-        UI::Text((currMapResets <= 0) ? "0" : tostring(Math::Round((prevNumRespawns / double(currMapResets)), 2)));
+        UI::Text((currMapResets <= 0) ? "0" : tostring(Math::Round((currMapRespawns / double(currMapResets)), 2)));
 
         UI::TableNextRow();
 		UI::TableNextColumn();
-		UI::Text("Respawns per Finish: ");
+		UI::Text("Avg. Respawns / Finish: ");
 		UI::TableNextColumn();
 		UI::Text((Total_Finishes <= 0) ? "0" : tostring(Math::Round((Total_Respawns / double(Total_Finishes)), 2)));
         UI::TableNextColumn();
-        UI::Text((currMapFinishes <= 0) ? "0" : tostring(Math::Round((prevNumRespawns / double(currMapFinishes)), 2)));
+        UI::Text((currMapFinishes <= 0) ? "0" : tostring(Math::Round((currMapRespawns / double(currMapFinishes)), 2)));
 
         UI::TableNextRow();
 		UI::TableNextColumn();
-		UI::Text("Resets per Finish: ");
+		UI::Text("Avg. Attempts / Finish: ");
 		UI::TableNextColumn();
 		UI::Text((Total_Finishes <= 0) ? "0" : tostring(Math::Round((Total_Resets / double(Total_Finishes)), 2)));
         UI::TableNextColumn();
         UI::Text((currMapFinishes <= 0) ? "0" : tostring(Math::Round((currMapResets / double(currMapFinishes)), 2)));
+
+        UI::TableNextRow();
+		UI::TableNextColumn();
+		UI::Text("Avg. Rsp + Atps / Finish: ");
+		UI::TableNextColumn();
+		UI::Text((Total_Finishes <= 0) ? "0" : tostring(Math::Round((Total_Respawns + Total_Resets / double(Total_Finishes)), 2)));
+        UI::TableNextColumn();
+        UI::Text((currMapFinishes <= 0) ? "0" : tostring(Math::Round((currMapRespawns + currMapResets / double(currMapFinishes)), 2)));
+
+        UI::TableNextRow();
+		UI::TableNextColumn();
+		UI::Text("Avg. Time / Respawn: ");
+		UI::TableNextColumn();
+		UI::Text(timeBetweenTotalRespawns);
+        UI::TableNextColumn();
+        UI::Text(timeBetweenCurrentRespawns);
+
+        UI::TableNextRow();
+		UI::TableNextColumn();
+		UI::Text("Avg. Time / Attempt: ");
+		UI::TableNextColumn();
+		UI::Text(timeBetweenTotalResets);
+        UI::TableNextColumn();
+        UI::Text(timeBetweenCurrentResets);
+
+        UI::TableNextRow();
+		UI::TableNextColumn();
+		UI::Text("Avg. Time / Finish: ");
+		UI::TableNextColumn();
+		UI::Text(timeBetweenTotalFinishes);
+        UI::TableNextColumn();
+        UI::Text(timeBetweenCurrentFinishes);
 
         UI::EndTable();
         UI::EndGroup();
@@ -221,7 +279,7 @@ namespace Respawn {
         UI::SameLine();
         if (UI::Button("Reset all to 0" + "##ResetAll")) {
             Total_Respawns = 0;
-            prevNumRespawns = 0;
+            currMapRespawns = 0;
             Total_Resets = 0;
             currMapResets = 0;
             Total_Finishes = 0;
@@ -230,7 +288,7 @@ namespace Respawn {
         
         if (UI::Button("Reset Respawns to 0" + "##ResetRespawns")) {
             Total_Respawns = 0;
-            prevNumRespawns = 0;
+            currMapRespawns = 0;
         }
 
         if (UI::Button("Reset Resets to 0" + "##ResetRestarts")) {
@@ -263,6 +321,30 @@ namespace Respawn {
             respawnYellowNotificationShown = false;
         }
 
+    }
+
+    void SetTimeBetweenCurrentRespawns() {
+        timeBetweenCurrentRespawns = currMapRespawns <= 0 ? "0" : Time::Format(Timer::currMapTimePlayed / currMapRespawns, false, true,  true);
+    }
+    
+    void SetTimeBetweenTotalRespawns() {
+        timeBetweenTotalRespawns = Total_Respawns <= 0 ? "0" : Time::Format(Timer::totalTimePlayed / Total_Respawns, false, true,  true);
+    }
+    
+    void SetTimeBetweenCurrentResets() {
+        timeBetweenCurrentResets = currMapResets <= 0 ? "0" : Time::Format(Timer::currMapTimePlayed / currMapResets, false, true,  true);
+    }
+    
+    void SetTimeBetweenTotalResets() {
+        timeBetweenTotalResets = Total_Resets <= 0 ? "0" : Time::Format(Timer::totalTimePlayed / Total_Resets, false, true,  true);
+    }
+    
+    void SetTimeBetweenCurrentFinishes() {
+        timeBetweenCurrentFinishes = currMapFinishes <= 0 ? "0" : Time::Format(Timer::currMapTimePlayed / currMapFinishes, false, true,  true);
+    }
+
+    void SetTimeBetweenTotalFinishes() {
+        timeBetweenTotalFinishes = Total_Finishes <= 0 ? "0" : Time::Format(Timer::totalTimePlayed / Total_Finishes, false, true,  true);
     }
 
 }

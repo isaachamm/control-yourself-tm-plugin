@@ -10,7 +10,8 @@ namespace Timer {
     Time::Info sessionStartTimeInfo = Time::Parse(Time::Stamp);
     string sessionStartTime = (sessionStartTimeInfo.Hour <= 9 ? "0" + tostring(sessionStartTimeInfo.Hour) : tostring(sessionStartTimeInfo.Hour)) + ":" + (sessionStartTimeInfo.Minute <= 9 ? "0" + tostring(sessionStartTimeInfo.Minute) : tostring(sessionStartTimeInfo.Minute)) + ":" + (sessionStartTimeInfo.Second <= 9 ? "0" + tostring(sessionStartTimeInfo.Second) : tostring(sessionStartTimeInfo.Second));
     uint lastRenderTime = 0;
-    int timePlayed = 0;
+    int totalTimePlayed = 0;
+    int currMapTimePlayed = 0;
     string currTime = "";
     string prevTime = "";
     bool timerYellowNotificationShown = false;
@@ -18,10 +19,16 @@ namespace Timer {
 
     void Update() {
 
+        auto app = GetApp();
+        auto map = app.RootMap;
+
         uint64 delta;
         delta = lastRenderTime == 0 ? 0 : Time::Now - lastRenderTime;
         lastRenderTime = Time::Now;
-        timePlayed += delta;
+        totalTimePlayed += delta;
+        if (map !is null) {
+            currMapTimePlayed += delta;
+        }
         Timer_Start_Time_MS -= delta;
         currTime = Time::Format(Timer_Start_Time_MS, false, true, true);
         
@@ -36,8 +43,8 @@ namespace Timer {
             string currTimeMinutes = ((Text::ParseInt(currTimeArray[1]) <= 0) ? "" : currTimeArray[1] + " Minutes");
             string currTimeSeconds = ((Text::ParseInt(currTimeArray[2]) <= 0) ? "" : currTimeArray[2] + " Seconds");
 
-            string currTimeMessage = currTimeHours + currTimeMinutes + ((Text::ParseInt(currTimeArray[2]) <= 0) ? "" : currTimeArray[2] + " Seconds") + " Left!";
-            UI::ShowNotification("Timer Almost Done", currTime + " Left.\nFinish Strong!", GlobalProps::Yellow_Warning_Color, 5000);
+            string currTimeMessage = currTimeHours + currTimeMinutes + currTimeSeconds + " Left!";
+            UI::ShowNotification("Timer Almost Done", currTimeMessage + "\nFinish Strong!", GlobalProps::Yellow_Warning_Color, 5000);
             timerYellowNotificationShown = true;
         } else if (Timer_Start_Time_MS < 0 && !timerRedNotificationShown) {
             UI::ShowNotification("Timer Done", "Time for a break!", GlobalProps::Red_Warning_Color, 5000);
