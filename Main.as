@@ -1,9 +1,9 @@
 #if TMNEXT
 
-void Main() {
-}
-
 void RenderEarly() {
+    if (!Setting_Show_Session_Stats) {
+        return;
+    }
     Respawn::Update();
     Timer::Update();
 }
