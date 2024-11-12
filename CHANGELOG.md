@@ -1,3 +1,8 @@
+# 0.0.5
+- Configured Settings and made display conditional upon those settings.
+- Refactored Timer_Start_Time_MS to be Time_Left_MS
+- Fixed spacing of timer warning message.
+
 # 0.0.4
 - Added new stats: Avg. time per reset, avg. time per respawn, avg. time per finish.
 - Added current map time in addition to total time.

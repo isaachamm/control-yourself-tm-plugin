@@ -1,9 +1,9 @@
-[Setting hidden name="Timer Start Time" description="This is the default time to play before a limit warning is given."]
+[Setting hidden]
 // 1 hour = 1000 ms * 60s * 60m
-int Timer_Start_Time_MS = 3601000;
+int Time_Left_MS = 3601000;
 
-[Setting name="Max Time" category="Settings" description="This is the amount of time that you'll play for before a notification warning is given."]
-int Max_Time = 3600000;
+[Setting hidden]
+int Max_Time_MS = 3600000;
 
 namespace Timer {
 
@@ -29,42 +29,27 @@ namespace Timer {
         if (map !is null) {
             currMapTimePlayed += delta;
         }
-        Timer_Start_Time_MS -= delta;
-        currTime = Time::Format(Timer_Start_Time_MS, false, true, true);
+        Time_Left_MS -= delta;
+        currTime = Time::Format(Time_Left_MS, false, true, true);
         
 
         if (currTime != prevTime) {
             prevTime = currTime;
         }
 
-        if (Timer_Start_Time_MS < (Max_Time / 10) && Timer_Start_Time_MS >= 0 && !timerYellowNotificationShown) {
+        if (Time_Left_MS < (Max_Time_MS / 10) && Time_Left_MS >= 0 && !timerYellowNotificationShown) {
             string[] currTimeArray = currTime.Split(":");
-            string currTimeHours = (Text::ParseInt(currTimeArray[0]) <= 0) ? "" : currTimeArray[0] + " Hours";
-            string currTimeMinutes = ((Text::ParseInt(currTimeArray[1]) <= 0) ? "" : currTimeArray[1] + " Minutes");
-            string currTimeSeconds = ((Text::ParseInt(currTimeArray[2]) <= 0) ? "" : currTimeArray[2] + " Seconds");
+            string currTimeHours = ((Text::ParseInt(currTimeArray[0]) <= 0) ? "" : currTimeArray[0] + " Hours ");
+            string currTimeMinutes = ((Text::ParseInt(currTimeArray[1]) <= 0) ? "" : currTimeArray[1] + " Minutes ");
+            string currTimeSeconds = ((Text::ParseInt(currTimeArray[2]) <= 0) ? "" : currTimeArray[2] + " Seconds ");
 
             string currTimeMessage = currTimeHours + currTimeMinutes + currTimeSeconds + " Left!";
             UI::ShowNotification("Timer Almost Done", currTimeMessage + "\nFinish Strong!", GlobalProps::Yellow_Warning_Color, 5000);
             timerYellowNotificationShown = true;
-        } else if (Timer_Start_Time_MS < 0 && !timerRedNotificationShown) {
+        } else if (Time_Left_MS < 0 && !timerRedNotificationShown) {
             UI::ShowNotification("Timer Done", "Time for a break!", GlobalProps::Red_Warning_Color, 5000);
             timerRedNotificationShown = true;
         }
-    }
-
-    void TimerSettings() {
-        if (UI::Button("Reset Timer to 1 hour" + "##ResetTimer")) {
-            timerYellowNotificationShown = false;
-            timerRedNotificationShown = false;
-            Timer_Start_Time_MS = 3601000;
-        }
-
-        if (UI::Button("Reset Timer to 1 second" + "##ResetTimerToTen")) {
-            timerYellowNotificationShown = false;
-            timerRedNotificationShown = false;
-            Timer_Start_Time_MS = 5000;
-        }
-
     }
 
 }
